@@ -84,6 +84,8 @@ struct module;
 struct drm_file;
 struct drm_device;
 
+struct videomode;
+
 #include "drm_os_linux.h"
 #include "drm_hashtab.h"
 #include "drm_mm.h"
@@ -1461,6 +1463,9 @@ drm_mode_parse_command_line_for_connector(const char *mode_option,
 extern struct drm_display_mode *
 drm_mode_create_from_cmdline_mode(struct drm_device *dev,
 				  struct drm_cmdline_mode *cmd);
+
+extern int drm_display_mode_from_videomode(const struct videomode *vm,
+					   struct drm_display_mode *dmode);
 
 /* Modesetting support */
 extern void drm_vblank_pre_modeset(struct drm_device *dev, int crtc);
