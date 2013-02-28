@@ -1037,7 +1037,6 @@ void drm_mode_config_cleanup(struct drm_device *dev)
 		plane->funcs->destroy(plane);
 	}
 
-	idr_remove_all(&dev->mode_config.crtc_idr);
 	idr_destroy(&dev->mode_config.crtc_idr);
 }
 EXPORT_SYMBOL(drm_mode_config_cleanup);
