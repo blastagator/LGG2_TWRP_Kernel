@@ -43,16 +43,14 @@ static struct bfqio_cgroup *cgroup_to_bfqio(struct cgroup *cgroup)
 static struct bfq_group *bfqio_lookup_group(struct bfqio_cgroup *bgrp,
                                             struct bfq_data *bfqd)
 {
-        struct bfq_group *bfqg;
-        struct hlist_node *n;
-        void *key;
+	struct bfq_group *bfqg;
+	void *key;
 
-        hlist_for_each_entry_rcu(bfqg, n, &bgrp->group_data, group_node) {
-                key = rcu_dereference(bfqg->bfqd);
-                if (key == bfqd)
-                        return bfqg;
-        }
-
+	hlist_for_each_entry_rcu(bfqg, &bgrp->group_data, group_node) {
+		key = rcu_dereference(bfqg->bfqd);
+		if (key == bfqd)
+			return bfqg;
+	}
         return NULL;
 }
 
@@ -532,10 +530,10 @@ static void bfq_destroy_group(struct bfqio_cgroup *bgrp, struct bfq_group *bfqg)
 
 static void bfq_end_raising_async(struct bfq_data *bfqd)
 {
-        struct hlist_node *pos, *n;
+        struct hlist_node *n;
         struct bfq_group *bfqg;
 
-        hlist_for_each_entry_safe(bfqg, pos, n, &bfqd->group_list, bfqd_node)
+	hlist_for_each_entry_safe(bfqg, n, &bfqd->group_list, bfqd_node)
                 bfq_end_raising_async_queues(bfqd, bfqg);
 }
 
@@ -549,12 +547,12 @@ static void bfq_end_raising_async(struct bfq_data *bfqd)
  */
 static void bfq_disconnect_groups(struct bfq_data *bfqd)
 {
-        struct hlist_node *pos, *n;
-        struct bfq_group *bfqg;
+	struct hlist_node *n;
+	struct bfq_group *bfqg;
 
-        bfq_log(bfqd, "disconnect_groups beginning") ;
-        hlist_for_each_entry_safe(bfqg, pos, n, &bfqd->group_list, bfqd_node) {
-                hlist_del(&bfqg->bfqd_node);
+	bfq_log(bfqd, "disconnect_groups beginning");
+	hlist_for_each_entry_safe(bfqg, n, &bfqd->group_list, bfqd_node) {
+		hlist_del(&bfqg->bfqd_node);
 
                 __bfq_deactivate_entity(bfqg->my_entity, 0);
 
@@ -646,7 +644,6 @@ static int bfqio_cgroup_##__VAR##_write(struct cgroup *cgroup,                \
 {                                                                        \
         struct bfqio_cgroup *bgrp;                                        \
         struct bfq_group *bfqg;                                                \
-        struct hlist_node *n;                                                \
                                                                         \
         if (val < (__MIN) || val > (__MAX))                                \
                 return -EINVAL;                                                \
@@ -658,7 +655,7 @@ static int bfqio_cgroup_##__VAR##_write(struct cgroup *cgroup,                \
                                                                         \
         spin_lock_irq(&bgrp->lock);                                        \
         bgrp->__VAR = (unsigned short)val;                                \
-        hlist_for_each_entry(bfqg, n, &bgrp->group_data, group_node) {        \
+        hlist_for_each_entry(bfqg, &bgrp->group_data, group_node) {	\
                 /*                                                      \
                  * Setting the ioprio_changed flag of the entity        \
                  * to 1 with new_##__VAR == ##__VAR would re-set        \
@@ -765,7 +762,6 @@ static void bfqio_attach(struct cgroup *cgroup, struct cgroup_taskset *tset)
         struct task_struct *task;
         struct io_context *ioc;
         struct io_cq *icq;
-        struct hlist_node *n;
 
         /*
          * IMPORTANT NOTE: The move of more than one process at a time to a
@@ -778,7 +774,7 @@ static void bfqio_attach(struct cgroup *cgroup, struct cgroup_taskset *tset)
                          * Handle cgroup change here.
                          */
                         rcu_read_lock();
-                        hlist_for_each_entry_rcu(icq, n, &ioc->icq_list, ioc_node)
+						hlist_for_each_entry_rcu(icq, &ioc->icq_list, ioc_node)
                                 if (!strncmp(icq->q->elevator->type->elevator_name,
                                              "bfq", ELV_NAME_MAX))
                                         bfq_bic_change_cgroup(icq_to_bic(icq),
@@ -791,19 +787,19 @@ static void bfqio_attach(struct cgroup *cgroup, struct cgroup_taskset *tset)
 
 static void bfqio_destroy(struct cgroup *cgroup)
 {
-        struct bfqio_cgroup *bgrp = cgroup_to_bfqio(cgroup);
-        struct hlist_node *n, *tmp;
-        struct bfq_group *bfqg;
+	struct bfqio_cgroup *bgrp = cgroup_to_bfqio(cgroup);
+	struct hlist_node *tmp;
+	struct bfq_group *bfqg;
 
-        /*
-         * Since we are destroying the cgroup, there are no more tasks
-         * referencing it, and all the RCU grace periods that may have
-         * referenced it are ended (as the destruction of the parent
-         * cgroup is RCU-safe); bgrp->group_data will not be accessed by
-         * anything else and we don't need any synchronization.
-         */
-        hlist_for_each_entry_safe(bfqg, n, tmp, &bgrp->group_data, group_node)
-                bfq_destroy_group(bgrp, bfqg);
+	/*
+	 * Since we are destroying the cgroup, there are no more tasks
+	 * referencing it, and all the RCU grace periods that may have
+	 * referenced it are ended (as the destruction of the parent
+	 * cgroup is RCU-safe); bgrp->group_data will not be accessed by
+	 * anything else and we don't need any synchronization.
+	 */
+	hlist_for_each_entry_safe(bfqg, tmp, &bgrp->group_data, group_node)
+		bfq_destroy_group(bgrp, bfqg);
 
         BUG_ON(!hlist_empty(&bgrp->group_data));
 

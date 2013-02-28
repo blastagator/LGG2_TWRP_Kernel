@@ -282,9 +282,9 @@ EXPORT_SYMBOL_GPL(system_nrt_freezable_wq);
 	for ((pool) = &(gcwq)->pools[0];				\
 	     (pool) < &(gcwq)->pools[NR_WORKER_POOLS]; (pool)++)
 
-#define for_each_busy_worker(worker, i, pos, gcwq)			\
+#define for_each_busy_worker(worker, i, gcwq)			\
 	for (i = 0; i < BUSY_WORKER_HASH_SIZE; i++)			\
-		hlist_for_each_entry(worker, pos, &gcwq->busy_hash[i], hentry)
+		hlist_for_each_entry(worker, &gcwq->busy_hash[i], hentry)
 
 static inline int __next_gcwq_cpu(int cpu, const struct cpumask *mask,
 				  unsigned int sw)
@@ -865,9 +865,8 @@ static struct worker *__find_worker_executing_work(struct global_cwq *gcwq,
 						   struct work_struct *work)
 {
 	struct worker *worker;
-	struct hlist_node *tmp;
 
-	hlist_for_each_entry(worker, tmp, bwh, hentry)
+	hlist_for_each_entry(worker, bwh, hentry)
 		if (worker->current_work == work &&
 		    worker->current_func == work->func)
 			return worker;
@@ -969,11 +968,10 @@ static bool is_chained_work(struct workqueue_struct *wq)
 	for_each_gcwq_cpu(cpu) {
 		struct global_cwq *gcwq = get_gcwq(cpu);
 		struct worker *worker;
-		struct hlist_node *pos;
 		int i;
 
 		spin_lock_irqsave(&gcwq->lock, flags);
-		for_each_busy_worker(worker, i, pos, gcwq) {
+		for_each_busy_worker(worker, i, gcwq) {
 			if (worker->task != current)
 				continue;
 			spin_unlock_irqrestore(&gcwq->lock, flags);
@@ -3367,7 +3365,6 @@ static int __cpuinit trustee_thread(void *__gcwq)
 	struct worker_pool *pool;
 	struct worker *worker;
 	struct work_struct *work;
-	struct hlist_node *pos;
 	long rc;
 	int i;
 
@@ -3390,7 +3387,7 @@ static int __cpuinit trustee_thread(void *__gcwq)
 			worker->flags |= WORKER_ROGUE;
 	}
 
-	for_each_busy_worker(worker, i, pos, gcwq)
+	for_each_busy_worker(worker, i, gcwq)
 		worker->flags |= WORKER_ROGUE;
 
 	/*
@@ -3505,7 +3502,7 @@ static int __cpuinit trustee_thread(void *__gcwq)
 	for_each_worker_pool(pool, gcwq)
 		WARN_ON(!list_empty(&pool->idle_list));
 
-	for_each_busy_worker(worker, i, pos, gcwq) {
+	for_each_busy_worker(worker, i, gcwq) {
 		struct work_struct *rebind_work = &worker->rebind_work;
 		unsigned long worker_flags = worker->flags;
 
