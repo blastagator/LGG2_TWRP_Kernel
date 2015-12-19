@@ -39,7 +39,6 @@
 /*
  * For mount options
  */
-#define F2FS_SUPER_MAGIC	0xF2F52010	/* F2FS Magic Number */
 #define F2FS_MOUNT_BG_GC		0x00000001
 #define F2FS_MOUNT_DISABLE_ROLL_FORWARD	0x00000002
 #define F2FS_MOUNT_DISCARD		0x00000004
@@ -278,7 +277,6 @@ struct f2fs_filename {
 #endif
 };
 
-#define QSTR_INIT(n, l)		{ .name = n, .len = l }
 #define FSTR_INIT(n, l)		{ .name = n, .len = l }
 #define FSTR_TO_QSTR(f)		QSTR_INIT((f)->name, (f)->len)
 #define fname_name(p)		((p)->disk_name.name)
@@ -688,7 +686,6 @@ struct f2fs_io_info {
 };
 
 #define is_read_io(rw)	(((rw) & 1) == READ)
-
 struct f2fs_bio_info {
 	struct f2fs_sb_info *sbi;	/* f2fs superblock */
 	struct bio *bio;		/* bios to merge */
@@ -1591,11 +1588,6 @@ static inline void f2fs_stop_checkpoint(struct f2fs_sb_info *sbi)
 	sbi->sb->s_flags |= MS_RDONLY;
 }
 
-static inline struct inode *file_inode(struct file *f)
-{
-	return f->f_path.dentry->d_inode;
-}
-
 static inline bool is_dot_dotdot(const struct qstr *str)
 {
 	if (str->len == 1 && str->name[0] == '.')
@@ -1636,14 +1628,6 @@ static inline void *f2fs_kvzalloc(size_t size, gfp_t flags)
 	if (!ret)
 		ret = __vmalloc(size, flags | __GFP_ZERO, PAGE_KERNEL);
 	return ret;
-}
-
-static inline void f2fs_kvfree(void *ptr)
-{
-	if (is_vmalloc_addr(ptr))
-		vfree(ptr);
-	else
-		kfree(ptr);
 }
 
 #define get_inode_mode(i) \
@@ -1704,7 +1688,7 @@ void update_parent_metadata(struct inode *, struct inode *, unsigned int);
 int room_for_filename(const void *, int, int);
 void f2fs_drop_nlink(struct inode *, struct inode *, struct page *);
 struct f2fs_dir_entry *f2fs_find_entry(struct inode *, struct qstr *,
-							struct page **);
+					struct page **);
 struct f2fs_dir_entry *f2fs_parent_dir(struct inode *, struct page **);
 ino_t f2fs_inode_by_name(struct inode *, struct qstr *);
 void f2fs_set_link(struct inode *, struct f2fs_dir_entry *,
@@ -2058,7 +2042,7 @@ int f2fs_convert_inline_inode(struct inode *);
 int f2fs_write_inline_data(struct inode *, struct page *);
 bool recover_inline_data(struct inode *, struct page *);
 struct f2fs_dir_entry *find_in_inline_dir(struct inode *,
-				struct f2fs_filename *, struct page **);
+			struct f2fs_filename *, struct page **);
 struct f2fs_dir_entry *f2fs_parent_inline_dir(struct inode *, struct page **);
 int make_empty_inline_dir(struct inode *inode, struct inode *, struct page *);
 int f2fs_add_inline_entry(struct inode *, const struct qstr *, struct inode *,

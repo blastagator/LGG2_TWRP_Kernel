@@ -29,21 +29,6 @@ static struct kmem_cache *discard_entry_slab;
 static struct kmem_cache *sit_entry_set_slab;
 static struct kmem_cache *inmem_entry_slab;
 
-static unsigned long __reverse_ulong(unsigned char *str)
-{
-	unsigned long tmp = 0;
-	int shift = 24, idx = 0;
-
-#if BITS_PER_LONG == 64
-	shift = 56;
-#endif
-	while (shift >= 0) {
-		tmp |= (unsigned long)str[idx++] << shift;
-		shift -= BITS_PER_BYTE;
-	}
-	return tmp;
-}
-
 /**
  * Copied from latest lib/llist.c
  * llist_for_each_entry_safe - iterate over some deleted entries of
@@ -102,6 +87,21 @@ struct llist_node *llist_reverse_order(struct llist_node *head)
  */
 #define list_last_entry(ptr, type, member) \
 	list_entry((ptr)->prev, type, member)
+
+static unsigned long __reverse_ulong(unsigned char *str)
+{
+	unsigned long tmp = 0;
+	int shift = 24, idx = 0;
+
+#if BITS_PER_LONG == 64
+	shift = 56;
+#endif
+	while (shift >= 0) {
+		tmp |= (unsigned long)str[idx++] << shift;
+		shift -= BITS_PER_BYTE;
+	}
+	return tmp;
+}
 
 /*
  * __reverse_ffs is copied from include/asm-generic/bitops/__ffs.h since
@@ -308,12 +308,11 @@ int commit_inmem_pages(struct inode *inode, bool abort)
 				trace_f2fs_commit_inmem_page(cur->page, INMEM);
 				fio.page = cur->page;
 				err = do_write_data_page(&fio);
+				submit_bio = true;
 				if (err) {
 					unlock_page(cur->page);
 					break;
 				}
-				clear_cold_data(cur->page);
-				submit_bio = true;
 			}
 		} else {
 			trace_f2fs_commit_inmem_page(cur->page, INMEM_DROP);
@@ -373,33 +372,6 @@ void f2fs_balance_fs_bg(struct f2fs_sb_info *sbi)
 		f2fs_sync_fs(sbi->sb, true);
 }
 
-struct __submit_bio_ret {
-	struct completion event;
-	int error;
-};
-
-static void __submit_bio_wait_endio(struct bio *bio, int error)
-{
-	struct __submit_bio_ret *ret = bio->bi_private;
-
-	ret->error = error;
-	complete(&ret->event);
-}
-
-static int __submit_bio_wait(int rw, struct bio *bio)
-{
-	struct __submit_bio_ret ret;
-
-	rw |= REQ_SYNC;
-	init_completion(&ret.event);
-	bio->bi_private = &ret;
-	bio->bi_end_io = __submit_bio_wait_endio;
-	submit_bio(rw, bio);
-	wait_for_completion(&ret.event);
-
-	return ret.error;
-}
-
 static int issue_flush_thread(void *data)
 {
 	struct f2fs_sb_info *sbi = data;
@@ -420,7 +392,7 @@ repeat:
 		fcc->dispatch_list = llist_reverse_order(fcc->dispatch_list);
 
 		bio->bi_bdev = sbi->sb->s_bdev;
-		ret = __submit_bio_wait(WRITE_FLUSH, bio);
+		ret = submit_bio_wait(WRITE_FLUSH, bio);
 
 		llist_for_each_entry_safe(cmd, next,
 					  fcc->dispatch_list, llnode) {
@@ -452,7 +424,7 @@ int f2fs_issue_flush(struct f2fs_sb_info *sbi)
 		int ret;
 
 		bio->bi_bdev = sbi->sb->s_bdev;
-		ret = __submit_bio_wait(WRITE_FLUSH, bio);
+		ret = submit_bio_wait(WRITE_FLUSH, bio);
 		bio_put(bio);
 		return ret;
 	}
@@ -1528,7 +1500,7 @@ static inline bool is_merged_page(struct f2fs_sb_info *sbi,
 		return false;
 	}
 
-	__bio_for_each_segment(bvec, io->bio, i, 0) {
+	bio_for_each_segment_all(bvec, io->bio, i) {
 
 		if (bvec->bv_page->mapping) {
 			target = bvec->bv_page;
@@ -2433,7 +2405,7 @@ static void discard_dirty_segmap(struct f2fs_sb_info *sbi,
 	struct dirty_seglist_info *dirty_i = DIRTY_I(sbi);
 
 	mutex_lock(&dirty_i->seglist_lock);
-	f2fs_kvfree(dirty_i->dirty_segmap[dirty_type]);
+	kvfree(dirty_i->dirty_segmap[dirty_type]);
 	dirty_i->nr_dirty[dirty_type] = 0;
 	mutex_unlock(&dirty_i->seglist_lock);
 }
@@ -2441,7 +2413,7 @@ static void discard_dirty_segmap(struct f2fs_sb_info *sbi,
 static void destroy_victim_secmap(struct f2fs_sb_info *sbi)
 {
 	struct dirty_seglist_info *dirty_i = DIRTY_I(sbi);
-	f2fs_kvfree(dirty_i->victim_secmap);
+	kvfree(dirty_i->victim_secmap);
 }
 
 static void destroy_dirty_segmap(struct f2fs_sb_info *sbi)
@@ -2480,8 +2452,8 @@ static void destroy_free_segmap(struct f2fs_sb_info *sbi)
 	if (!free_i)
 		return;
 	SM_I(sbi)->free_info = NULL;
-	f2fs_kvfree(free_i->free_segmap);
-	f2fs_kvfree(free_i->free_secmap);
+	kvfree(free_i->free_segmap);
+	kvfree(free_i->free_secmap);
 	kfree(free_i);
 }
 
@@ -2502,9 +2474,9 @@ static void destroy_sit_info(struct f2fs_sb_info *sbi)
 	}
 	kfree(sit_i->tmp_map);
 
-	f2fs_kvfree(sit_i->sentries);
-	f2fs_kvfree(sit_i->sec_entries);
-	f2fs_kvfree(sit_i->dirty_sentries_bitmap);
+	kvfree(sit_i->sentries);
+	kvfree(sit_i->sec_entries);
+	kvfree(sit_i->dirty_sentries_bitmap);
 
 	SM_I(sbi)->sit_info = NULL;
 	kfree(sit_i->sit_bitmap);

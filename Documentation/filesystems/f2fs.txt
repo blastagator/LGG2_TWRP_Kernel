@@ -39,7 +39,7 @@ areas on disk for fast writing, we divide  the log into segments and use a
 segment cleaner to compress the live information from heavily fragmented
 segments." from Rosenblum, M. and Ousterhout, J. K., 1992, "The design and
 implementation of a log-structured file system", ACM Trans. Computer Systems
-10, 1, 26–52.
+10, 1, 26.52.
 
 Wandering Tree Problem
 ----------------------
@@ -83,8 +83,8 @@ Flash Awareness
 
 Wandering Tree Problem
 ----------------------
-- Use a term, “node”, that represents inodes as well as various pointer blocks
-- Introduce Node Address Table (NAT) containing the locations of all the “node”
+- Use a term, .node., that represents inodes as well as various pointer blocks
+- Introduce Node Address Table (NAT) containing the locations of all the .node.
   blocks; this will cut off the update propagation.
 
 Cleaning Overhead
