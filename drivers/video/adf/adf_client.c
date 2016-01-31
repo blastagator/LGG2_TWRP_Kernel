@@ -16,7 +16,7 @@
 #include <linux/mutex.h>
 #include <linux/slab.h>
 
-#include "sw_sync.h"
+#include <linux/sw_sync.h>
 
 #include <video/adf.h>
 #include <video/adf_client.h>
