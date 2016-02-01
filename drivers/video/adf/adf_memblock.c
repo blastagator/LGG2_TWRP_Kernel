@@ -16,6 +16,7 @@
 #include <linux/highmem.h>
 #include <linux/memblock.h>
 #include <linux/slab.h>
+#include <linux/export.h>
 
 struct adf_memblock_pdata {
 	phys_addr_t base;
