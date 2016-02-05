@@ -2754,10 +2754,8 @@ CONFIG_MACH_LGE_BACKLIGHT_SUPPORT=y
 #
 # ADF (Atomic Display Framework)
 #
-CONFIG_DISPLAY_CORE=y
-CONFIG_ADF=y
-CONFIG_ADF_FBDEV=y
-CONFIG_ADF_MEMBLOCK=y
+# CONFIG_DISPLAY_CORE is not set
+# CONFIG_ADF is not set
 
 #
 # Console display driver support
